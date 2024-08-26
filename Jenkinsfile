@@ -53,13 +53,22 @@ pipeline {
             }
         }
 
-        // stage('DOCKER-BUILD'){
-        //     steps {
-        //         withDockerRegistry(credentialsId: 'dockerhub-cred', url: 'https://index.docker.io/v1/') {
-        //             sh "docker build -t cicd-devops ."
-        //         }
-        //     }
-        // }
+        stage('publish-artifact'){
+            steps {
+                withMaven(globalMavenSettingsConfig: 'settings-maven', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                   sh 'mvn deploy'
+                }
+            }
+        }
+        stage('DOCKER-BUILD'){
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub-cred', url: 'https://index.docker.io/v1/') {
+                        sh "docker build -t mohammadrafi44/taskmaster:latest ."
+                    }
+                }
+            }
+        }
 
         // stage('DOCKER-PUBLISH'){
         //     steps {
