@@ -60,6 +60,7 @@ pipeline {
                 }
             }
         }
+
         stage('DOCKER-BUILD'){
             steps {
                 script {
@@ -70,43 +71,47 @@ pipeline {
             }
         }
 
-        // stage('DOCKER-PUBLISH'){
-        //     steps {
-        //         withDockerRegistry(credentialsId: 'dockerhub-cred', url: 'https://index.docker.io/v1/') {
-        //             sh "docker tag cicd-devops mohammadrafi44/devopscicd-project-1_devops-cicd-main:$BUILD_ID"
-        //             sh "docker push mohammadrafi44/devopscicd-project-1_devops-cicd-main:$BUILD_ID"
-        //         }
-        //     }
-        // }
-        // stage("DOCKER-IMAGE-CLEANUP"){
-        //     steps {
-        //         script {
-        //             echo 'docker images cleanup started'
-        //             sh 'docker system prune -af'
-        //             echo 'docker images cleanup finished'
-        //         }
-        //     }
-        // }
-        // stage("K8S-DEPLOY"){
-        //     steps {
-        //         script {
-        //             withKubeConfig(caCertificate: '', clusterName: 'kubernetes', contextName: '', credentialsId: 'k8s-token-for-jenkins', namespace: 'jenkins', restrictKubeConfigAccess: false, serverUrl: 'https://172.31.37.170:6443') {
-        //                 sh "sed -i 's|mohammadrafi44/devopscicd-project-1_devops-cicd-main:.*|mohammadrafi44/devopscicd-project-1_devops-cicd-main:${BUILD_ID}|' deploymentservice.yaml"
-        //                 sh "kubectl apply -f deploymentservice.yaml"
-        //                 sleep 20
-        //             }
-        //         }
-        //     }
-        // }
-        // stage("VERIFY-DEPLOYMENT"){
-        //     steps {
-        //         script {
-        //             withKubeConfig(caCertificate: '', clusterName: 'kubernetes', contextName: '', credentialsId: 'k8s-token-for-jenkins', namespace: 'jenkins', restrictKubeConfigAccess: false, serverUrl: 'https://172.31.37.170:6443') {
-        //                 sh "kubectl get pods"
-        //                 sh "kubectl get svc"
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Trivy-image-scan'){
+            steps {
+                sh 'trivy image --format table -o image.html mohammadrafi44/taskmaster:latest'
+                }
+            }
+        }
+
+        stage('Docker-Publish'){
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub-cred', url: 'https://index.docker.io/v1/') {
+                        sh "docker push mohammadrafi44/taskmaster:latest"
+                    }
+                }
+            }
+        }
+        stage("Docker-Image-Cleanup"){
+            steps {
+                script {
+                    echo 'docker images cleanup started'
+                    sh 'docker system prune -af'
+                    echo 'docker images cleanup finished'
+                }
+            }
+        }
+        stage("K8s-Deploy"){
+            steps {
+                withKubeConfig(caCertificate: '', clusterName: 'devopsshack-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://41BFF322BA9DC0AC6E2B601200EBB29D.gr7.ap-south-1.eks.amazonaws.com') {
+                    sh 'kubectl apply -f deployment-service.yml'
+                    sleep 30 
+                }
+            }
+        }
+        
+        stage("K8s-Verify-Deploy"){
+            steps {
+                withKubeConfig(caCertificate: '', clusterName: 'devopsshack-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://41BFF322BA9DC0AC6E2B601200EBB29D.gr7.ap-south-1.eks.amazonaws.com') {
+                    sh 'kubectl get pods -n webapps'
+                    sh 'kubectl get svc -n webapps'
+                }
+            }
+        }
     }
 }
