@@ -75,7 +75,6 @@ pipeline {
             steps {
                 sh 'trivy image --format table -o image.html mohammadrafi44/taskmaster:latest'
                 }
-            }
         }
 
         stage('Docker-Publish'){
@@ -114,3 +113,4 @@ pipeline {
             }
         }
     }
+}
