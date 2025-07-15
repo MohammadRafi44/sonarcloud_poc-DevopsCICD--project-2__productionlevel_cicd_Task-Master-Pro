@@ -50,6 +50,12 @@ public class SonarViolationsExample {
         int res = p + q;
         System.out.println("Sum is: " + res);
 
+        // Duplicate Block 4
+        int a = 5;
+        int b = 10;
+        int result = a + b;
+        System.out.println("Sum is: " + result);
+
         // Bug: hardcoded conditional
         if (x == 5 && y == 10) {
             System.out.println("This block only works with hardcoded values.");
