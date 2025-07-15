@@ -51,9 +51,9 @@ public class SonarViolationsExample {
         System.out.println("Sum is: " + res);
 
         // Duplicate Block 4
-        int a = 5;
-        int b = 10;
-        int result = a + b;
+        int t = 5;
+        int s = 10;
+        int result1 = a + b;
         System.out.println("Sum is: " + result);
 
         // Bug: hardcoded conditional
