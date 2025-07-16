@@ -56,7 +56,7 @@ public class SonarViolationsExample {
         int result1 = a + b;
         System.out.println("Sum is: " + result);
 
-        
+
         // Duplicate Block 5
         int i = 5;
         int j = 10;
@@ -72,7 +72,7 @@ public class SonarViolationsExample {
         if (true) return;
         System.out.println("This will never be executed");  // Code Smell
     }
-
+ 
     // Unused method
     public void doNothing() {  // Code Smell
     }
