@@ -24,6 +24,7 @@ public class SonarViolationsExample {
             // silently swallowing exception
         }
 
+        
         // Code Smell: very long method
         for (int i = 0; i < 10; i++) {
             System.out.println("Looping " + i);
@@ -61,6 +62,13 @@ public class SonarViolationsExample {
         int i = 5;
         int j = 10;
         int result2 = a + b;
+        System.out.println("Sum is: " + result);
+
+        
+        // Duplicate Block 5
+        int i1 = 5;
+        int j1 = 10;
+        int result3 = a + b;
         System.out.println("Sum is: " + result);
 
         // Bug: hardcoded conditional
