@@ -1,103 +1,147 @@
+import java.security.MessageDigest;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+
 public class SonarViolationsExample {
 
-    // Code Smell: unused field
-    private String unusedField = "This is not used";
+    // Unused fields (Maintainability)
+    private int unused1;
+    private int unused2;
+    private int unused3;
 
-    // Code Smell: constant hardcoded directly
-    private static final int MAGIC_NUMBER = 42;
+    // Hardcoded credentials (Security)
+    private static final String DB_USER = "admin";
+    private static final String DB_PASS = "admin123";
+    private static final String API_KEY = "my-api-key";
+    private static final String SECRET = "shhh!";
 
     public static void main(String[] args) {
-        // Bug: possible null dereference
-        String message = null;
-        if (message.equals("Hello")) {  // BUG
-            System.out.println("Message matched");
+        // Reliability: Null dereference
+        String str = null;
+        if (str.equals("fail")) {
+            System.out.println("null check failed");
         }
 
-        // Code Smell: hardcoded strings
-        System.out.println("Login with admin/admin"); // Hardcoded credentials
-        System.out.println("Connecting to DB at 10.0.0.1"); // Hardcoded IP
-
-        // Bug: empty catch block
+        // Security: SQL Injection
+        String input = "1 OR 1=1";
         try {
-            int result = 1 / 0;
-        } catch (Exception e) {
-            // silently swallowing exception
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/db", DB_USER, DB_PASS);
+            Statement stmt = conn.createStatement();
+            stmt.execute("SELECT * FROM users WHERE id = " + input);
+        } catch (Exception e) {}
+
+        // Security: Weak hashing
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.digest("insecure".getBytes());
+        } catch (Exception e) {}
+
+        // Maintainability: Magic numbers
+        int bonus = 1000 * 4 * 365;
+
+        // Empty catch (Reliability)
+        try {
+            int x = 1 / 0;
+        } catch (Exception e) {}
+
+        // Security: Path traversal
+        String filePath = "/etc/passwd";
+
+        // Maintainability: Deep nesting
+        if (true) {
+            if (true) {
+                if (true) {
+                    if (true) {
+                        System.out.println("Too nested");
+                    }
+                }
+            }
         }
 
-        
-        // Code Smell: very long method
-        for (int i = 0; i < 10; i++) {
-            System.out.println("Looping " + i);
-        }
-        for (int i = 0; i < 10; i++) {
-            System.out.println("Looping again " + i);
+        // Reliability: Infinite loop
+        while (true) {
+            break;
         }
 
-        // Duplicate Block 1
-        int x = 5;
-        int y = 10;
-        int sum = x + y;
-        System.out.println("Sum is: " + sum);
+        // Commented out code
+        // int legacyCode = legacyCall(1);
 
-        // Duplicate Block 2
-        int a = 5;
-        int b = 10;
-        int result = a + b;
-        System.out.println("Sum is: " + result);
+        // Duplicate blocks (x7)
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
+        }
 
-        // Duplicate Block 3
-        int p = 5;
-        int q = 10;
-        int res = p + q;
-        System.out.println("Sum is: " + res);
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
+        }
 
-        // Duplicate Block 4
-        int t = 5;
-        int s = 10;
-        int result1 = a + b;
-        System.out.println("Sum is: " + result);
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
+        }
 
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
+        }
 
-        // Duplicate Block 5
-        int i = 5;
-        int j = 10;
-        int result2 = a + b;
-        System.out.println("Sum is: " + result);
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
+        }
 
-        
-        // Duplicate Block 5
-        int i1 = 5;
-        int j1 = 10;
-        int result3 = a + b;
-        System.out.println("Sum is: " + result);
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
+        }
 
-        // Duplicate Block 5
-        int i11 = 5;
-        int j11 = 10;
-        int result33 = a + b;
-        System.out.println("Sum is: " + result);
-
-        // Bug: hardcoded conditional
-        if (x == 5 && y == 10) {
-            System.out.println("This block only works with hardcoded values.");
+        for (int i = 0; i < 3; i++) {
+            int a = 5, b = 10;
+            int result = a + b;
+            System.out.println("Result: " + result);
         }
 
         // Unreachable code
         if (true) return;
-        System.out.println("This will never be executed");  // Code Smell
+        System.out.println("Never runs");
+
+        // Hardcoded credentials again
+        System.out.println("Connecting with: admin/admin123");
     }
- 
+
+    // 20+ uncovered methods (for coverage violations)
+    public void helper1() { int x = 1; }
+    public void helper2() { int x = 2; }
+    public void helper3() { int x = 3; }
+    public void helper4() { int x = 4; }
+    public void helper5() { int x = 5; }
+    public void helper6() { int x = 6; }
+    public void helper7() { int x = 7; }
+    public void helper8() { int x = 8; }
+    public void helper9() { int x = 9; }
+    public void helper10() { int x = 10; }
+    public void helper11() { int x = 11; }
+    public void helper12() { int x = 12; }
+    public void helper13() { int x = 13; }
+    public void helper14() { int x = 14; }
+    public void helper15() { int x = 15; }
+    public void helper16() { int x = 16; }
+    public void helper17() { int x = 17; }
+    public void helper18() { int x = 18; }
+    public void helper19() { int x = 19; }
+    public void helper20() { int x = 20; }
+
     // Unused method
-    public void doNothing() {  // Code Smell
-    }
-
-    // Untested business logic
-    public int multiply(int a, int b) {
-        return a * b;
-    }
-
-    // Another unused method
-    private void helper() {
-        System.out.println("This is a helper");
+    private void unused() {
+        System.out.println("not used");
     }
 }
