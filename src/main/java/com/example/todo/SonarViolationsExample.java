@@ -1,3 +1,4 @@
+
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -40,7 +41,7 @@ public class SonarViolationsExample {
         // Maintainability: Magic numbers
         int bonus = 1000 * 4 * 365;
 
-        // Empty catch (Reliability)
+        // Empty catch (Maintainability)
         try {
             int x = 1 / 0;
         } catch (Exception e) {}
@@ -139,6 +140,29 @@ public class SonarViolationsExample {
     public void helper18() { int x = 18; }
     public void helper19() { int x = 19; }
     public void helper20() { int x = 20; }
+
+    // Reliability Issues (Newly Added)
+    public void causeCrash() {
+        int[] arr = new int[5];
+        System.out.println(arr[10]); // ArrayIndexOutOfBoundsException
+    }
+
+    public void riskyDivide() {
+        int a = 10;
+        int b = 0;
+        int result = a / b; // Division by zero
+    }
+
+    public int crashMe(int x) {
+        return crashMe(x); // Infinite recursion
+    }
+
+    public void nullAccess() {
+        String msg = null;
+        if (msg.length() > 0) {  // NullPointerException potential
+            System.out.println(msg);
+        }
+    }
 
     // Unused method
     private void unused() {
