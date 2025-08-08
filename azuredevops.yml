@@ -103,3 +103,30 @@ stages:
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)\owasp-report'
         ArtifactName: 'dependency-check-report'
+# 4) Deploy to local folder (QA)
+# ======================
+- stage: DeployQA
+  displayName: 'Deploy JAR to local folder (QA)'
+  dependsOn: SecurityScan
+  jobs:
+  - job: CopyJarToLocal
+    pool:
+      name: 'rafiagent'
+    steps:
+    - task: DownloadPipelineArtifact@2
+      displayName: 'Download drop artifact'
+      inputs:
+        artifact: 'drop'
+        path: '$(Pipeline.Workspace)\deploy'
+
+    - powershell: |
+        $deployFolder = "C:\QA_Deploy"
+        if (-not (Test-Path $deployFolder)) {
+          New-Item -ItemType Directory -Force -Path $deployFolder | Out-Null
+        }
+
+        Get-ChildItem "$(Pipeline.Workspace)\deploy" -Recurse -Filter *.jar | ForEach-Object {
+          Copy-Item -Path $_.FullName -Destination $deployFolder -Force
+          Write-Host "Copied $($_.Name) to $deployFolder"
+        }
+      displayName: 'Copy JAR to QA deploy folder'
