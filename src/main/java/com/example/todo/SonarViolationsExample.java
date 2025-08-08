@@ -101,8 +101,8 @@ public class SonarViolationsExample {
 
         for (int i = 0; i < 3; i++) {
             int a = 5, b = 10;
-            int result = a + b;
-            System.out.println("Result: " + result);
+            int resultq = a + b;
+            System.out.println("Result: " + resultq);
         }
 
         for (int i = 0; i < 3; i++) {
