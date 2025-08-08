@@ -4,8 +4,18 @@ trigger:
 pool:
   name: 'rafiagent'   # self-hosted Windows agent
 
+# --- extra repo for automation tests ---
+resources:
+  repositories:
+  - repository: regtests                      # alias used in checkout
+    type: github
+    name: MohammadRafi44/agi_Kabi            # <owner>/<repo>
+    ref: refs/heads/main                     # adjust if different
+    endpoint: GitHubRafi                     # service connection name
+
 variables:
   mavenPOMFile: 'pom.xml'
+  RegTestsRepo: '$(Pipeline.Workspace)\s\regtests'   # checkout path for alias "regtests" on Windows
 
 stages:
 
@@ -103,6 +113,8 @@ stages:
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)\owasp-report'
         ArtifactName: 'dependency-check-report'
+
+# ======================
 # 4) Deploy to local folder (QA)
 # ======================
 - stage: DeployQA
@@ -130,3 +142,65 @@ stages:
           Write-Host "Copied $($_.Name) to $deployFolder"
         }
       displayName: 'Copy JAR to QA deploy folder'
+
+# ======================
+# 5) QA Automation (separate repo)
+# ======================
+- stage: QA_Automation
+  displayName: 'Run QA Automation from agi_Kabi'
+  dependsOn: DeployQA
+  jobs:
+  - job: AutomationTests
+    displayName: 'Run QA Automation Tests'
+    pool:
+      name: 'rafiagent'
+    steps:
+    - checkout: regtests
+      displayName: 'Checkout automation tests repo (agi_Kabi)'
+
+    - task: Maven@4
+      displayName: 'Run Reg-Auto-Tests'
+      inputs:
+        mavenPomFile: '$(RegTestsRepo)\pom.xml'
+        goals: install
+        options: '-Dmaven.repo.local=maven-local-repo install'
+
+    - powershell: |
+        $reportPath = "$(RegTestsRepo)\target\surefire-reports"
+        if (-not (Test-Path $reportPath)) { throw "Report path not found: $reportPath" }
+        Get-ChildItem -Path $reportPath -Filter "TEST-*.xml" | ForEach-Object {
+            (Get-Content $_.FullName) `
+            -replace '<testsuite([^>]*)>', '' `
+            -replace '</testsuite>', '' | Set-Content $_.FullName
+        }
+      displayName: 'Clean JUnit XML headers'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results **/surefire-reports/TEST-*.xml'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '$(RegTestsRepo)\target\surefire-reports\TEST-*.xml'
+        failTaskOnFailedTests: true
+
+    - powershell: |
+        $reportRoot = "$(RegTestsRepo)\report"
+        $latestDir = Get-ChildItem -Directory $reportRoot | Sort-Object Name -Descending | Select-Object -First 1
+        
+        if ($latestDir) {
+            $srcHtml = Join-Path $latestDir.FullName "TestReport.html"
+            $targetDir = "$(Build.ArtifactStagingDirectory)\ExtentReport"
+        
+            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+            Copy-Item -Path $srcHtml -Destination $targetDir -Force
+            Write-Host "✅ Copied $srcHtml to $targetDir"
+        } else {
+            Write-Error "❌ No report folder found in $reportRoot"
+            exit 1
+        }
+      displayName: 'Copy Latest Extent Report'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Extent Report'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)\ExtentReport'
+        ArtifactName: 'ExtentReport'
