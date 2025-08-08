@@ -4,175 +4,43 @@ trigger:
 pool:
   name: 'rafiagent'   # self-hosted Windows agent
 
-# --- extra repo for automation tests ---
 resources:
   repositories:
   - repository: regtests                      # alias used in checkout
     type: github
     name: MohammadRafi44/agi_Kabi            # <owner>/<repo>
-    ref: refs/heads/main                     # adjust if different
-    endpoint: GitHubRafi                     # service connection name
+    ref: refs/heads/main                     # adjust if different branch
+    endpoint: GitHubRafi                     # service connection name in Azure DevOps
 
 variables:
-  mavenPOMFile: 'pom.xml'
   RegTestsRepo: '$(Pipeline.Workspace)\s\regtests'   # checkout path for alias "regtests" on Windows
 
 stages:
-
-# ======================
-# 1) Build & Unit Tests
-# ======================
-- stage: Build
-  displayName: 'Build & Unit Tests'
-  jobs:
-  - job: BuildAndTest
-    pool:
-      name: 'rafiagent'
-    steps:
-    - task: Maven@4
-      displayName: 'Unit Tests Run'
-      inputs:
-        mavenPomFile: '$(mavenPOMFile)'
-        goals: test
-        options: '-B -DskipTests=false'
-
-    - task: PublishTestResults@2
-      displayName: 'Publish Unit Test Results'
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '**/target/surefire-reports/*.xml'
-        failTaskOnFailedTests: true
-
-    - task: Maven@3
-      displayName: 'Maven Build'
-      inputs:
-        mavenPomFile: '$(mavenPOMFile)'
-        goals: 'clean package'
-
-    # -----------------------
-    # Collect & publish JAR(s)
-    # -----------------------
-    - task: CopyFiles@2
-      displayName: 'Stage artifacts'
-      inputs:
-        contents: '**/target/*.jar'
-        targetFolder: '$(Build.ArtifactStagingDirectory)'
-
-    - task: PublishPipelineArtifact@1
-      displayName: 'Publish artifact'
-      inputs:
-        targetPath: '$(Build.ArtifactStagingDirectory)'
-        artifact: 'drop'
-        publishLocation: 'pipeline'
-
-# ======================
-# 2) Static Analysis (SAST) - SonarCloud
-# ======================
-- stage: CodeAnalysis
-  displayName: 'Static Code Analysis'
-  dependsOn: Build
-  jobs:
-  - job: SonarScan
-    pool:
-      name: 'rafiagent'
-    steps:
-    - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@3
-      displayName: 'Prepare analysis on SonarQube Cloud'
-      inputs:
-        SonarQube: 'sonarcloud15thJuly'
-        organization: 'rafi2'
-        scannerMode: 'cli'
-        cliScannerVersion: '7.0.2.4839'
-
-    - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@3
-      displayName: 'Run Code Analysis'
-      inputs:
-        jdkversion: 'JAVA_HOME'
-
-    - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@3
-      displayName: 'Publish Quality Gate Result'
-
-# ======================
-# 3) Dependency Scan - OWASP
-# ======================
-- stage: SecurityScan
-  displayName: 'Dependency Vulnerability Scan'
-  dependsOn: CodeAnalysis
-  jobs:
-  - job: OWASPScan
-    pool:
-      name: 'rafiagent'
-    steps:
-    - powershell: |
-        Write-Host "Running OWASP Dependency-Check"
-        & "C:\Tools\dependency-check\bin\dependency-check.bat" --project JavaProject --scan "$(Build.SourcesDirectory)" --format HTML --out "$(Build.ArtifactStagingDirectory)\owasp-report"
-      displayName: 'OWASP Dependency-Check'
-
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact: dependency-check-report'
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)\owasp-report'
-        ArtifactName: 'dependency-check-report'
-
-# ======================
-# 4) Deploy to local folder (QA)
-# ======================
-- stage: DeployQA
-  displayName: 'Deploy JAR to local folder (QA)'
-  dependsOn: SecurityScan
-  jobs:
-  - job: CopyJarToLocal
-    pool:
-      name: 'rafiagent'
-    steps:
-    - task: DownloadPipelineArtifact@2
-      displayName: 'Download drop artifact'
-      inputs:
-        artifact: 'drop'
-        path: '$(Pipeline.Workspace)\deploy'
-
-    - powershell: |
-        $deployFolder = "C:\QA_Deploy"
-        if (-not (Test-Path $deployFolder)) {
-          New-Item -ItemType Directory -Force -Path $deployFolder | Out-Null
-        }
-
-        Get-ChildItem "$(Pipeline.Workspace)\deploy" -Recurse -Filter *.jar | ForEach-Object {
-          Copy-Item -Path $_.FullName -Destination $deployFolder -Force
-          Write-Host "Copied $($_.Name) to $deployFolder"
-        }
-      displayName: 'Copy JAR to QA deploy folder'
-
-# ======================
 - stage: QA_Automation
   displayName: 'Run QA Automation from agi_Kabi'
-  dependsOn: DeployQA
-  condition: succeeded('DeployQA')
   jobs:
   - job: AutomationTests
     displayName: 'Run QA Automation Tests'
     pool:
       name: 'rafiagent'
     steps:
-    # Primary repo (optional, but keeps behavior consistent)
-    - checkout: self
-
-    # Secondary repo: force its path to s\regtests
     - checkout: regtests
       path: s\regtests
       displayName: 'Checkout automation tests repo (agi_Kabi)'
 
-    # (optional) sanity: show where things landed
+    # Diagnostic: verify repo layout
     - powershell: |
         Write-Host "Build.SourcesDirectory = $(Build.SourcesDirectory)"
         Write-Host "Pipeline.Workspace    = $(Pipeline.Workspace)"
         Get-ChildItem -Path "$(Pipeline.Workspace)\s" -Name
         if (Test-Path "$(Pipeline.Workspace)\s\regtests\pom.xml") {
-          Write-Host "Found pom.xml in regtests."
+          Write-Host "✅ Found pom.xml in regtests."
         } else {
-          Write-Error "pom.xml NOT found in $(Pipeline.Workspace)\s\regtests"
+          Write-Error "❌ pom.xml NOT found in $(Pipeline.Workspace)\s\regtests"
         }
+      displayName: 'Check regtests repo structure'
 
+    # Run Maven automation tests
     - task: Maven@4
       displayName: 'Run Reg-Auto-Tests'
       inputs:
@@ -180,9 +48,10 @@ stages:
         goals: install
         options: '-Dmaven.repo.local=maven-local-repo install'
 
+    # Clean JUnit XML headers
     - powershell: |
         $reportPath = "$(Pipeline.Workspace)\s\regtests\target\surefire-reports"
-        if (-not (Test-Path $reportPath)) { throw "Report path not found: $reportPath" }
+        if (-not (Test-Path $reportPath)) { throw "❌ Report path not found: $reportPath" }
         Get-ChildItem -Path $reportPath -Filter "TEST-*.xml" | ForEach-Object {
             (Get-Content $_.FullName) `
             -replace '<testsuite([^>]*)>', '' `
@@ -190,6 +59,7 @@ stages:
         }
       displayName: 'Clean JUnit XML headers'
 
+    # Publish JUnit results
     - task: PublishTestResults@2
       displayName: 'Publish Test Results **/surefire-reports/TEST-*.xml'
       inputs:
@@ -197,24 +67,7 @@ stages:
         testResultsFiles: '$(Pipeline.Workspace)\s\regtests\target\surefire-reports\TEST-*.xml'
         failTaskOnFailedTests: true
 
+    # Copy latest Extent report
     - powershell: |
         $reportRoot = "$(Pipeline.Workspace)\s\regtests\report"
-        $latestDir = Get-ChildItem -Directory $reportRoot | Sort-Object Name -Descending | Select-Object -First 1
-        if ($latestDir) {
-            $srcHtml = Join-Path $latestDir.FullName "TestReport.html"
-            $targetDir = "$(Build.ArtifactStagingDirectory)\ExtentReport"
-            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
-            Copy-Item -Path $srcHtml -Destination $targetDir -Force
-            Write-Host "✅ Copied $srcHtml to $targetDir"
-        } else {
-            Write-Error "❌ No report folder found in $reportRoot"
-            exit 1
-        }
-      displayName: 'Copy Latest Extent Report'
-
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish Extent Report'
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)\ExtentReport'
-        ArtifactName: 'ExtentReport'
-
+        $l
