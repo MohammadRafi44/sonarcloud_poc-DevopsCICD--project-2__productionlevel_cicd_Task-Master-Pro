@@ -1,5 +1,5 @@
 trigger:
-- master
+- none
 
 pool:
   name: 'rafiagent'  # self-hosted Windows agent
@@ -18,13 +18,15 @@ variables:
 
 stages:
 # ======================
-# 1) Pre-Build: Tests + SAST + OWASP
+# 1) Pre-Build: separate jobs (UnitTests -> Sonar -> OWASP)
 # ======================
 - stage: PreBuild
   displayName: 'Pre-Build Checks'
   jobs:
-  - job: PreChecks
-    displayName: 'Unit tests, SonarCloud, OWASP'
+
+  # Job 1 - Unit Tests
+  - job: UnitTests
+    displayName: 'Unit Tests'
     pool:
       name: 'rafiagent'
     steps:
@@ -42,6 +44,13 @@ stages:
         testResultsFiles: '**/target/surefire-reports/*.xml'
         failTaskOnFailedTests: true
 
+  # Job 2 - SonarCloud Analysis
+  - job: SonarScan
+    displayName: 'SonarCloud Analysis'
+    pool:
+      name: 'rafiagent'
+    dependsOn: UnitTests
+    steps:
     - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@3
       displayName: 'Prepare SonarCloud Analysis'
       inputs:
@@ -61,6 +70,13 @@ stages:
         pollingTimeoutSec: '300'
         failWhenQualityGateFails: true
 
+  # Job 3 - OWASP Dependency Check
+  - job: OWASPScan
+    displayName: 'OWASP Dependency-Check'
+    pool:
+      name: 'rafiagent'
+    dependsOn: SonarScan
+    steps:
     - powershell: |
         Write-Host "Running OWASP Dependency-Check"
         & "C:\Tools\dependency-check\bin\dependency-check.bat" --project JavaProject --scan "$(Build.SourcesDirectory)" --format HTML --out "$(Build.ArtifactStagingDirectory)\owasp-report"
@@ -85,7 +101,7 @@ stages:
     pool:
       name: 'rafiagent'
     steps:
-    - task: Maven@3
+    - task: Maven@4
       displayName: 'Maven Build'
       inputs:
         mavenPomFile: '$(mavenPOMFile)'
