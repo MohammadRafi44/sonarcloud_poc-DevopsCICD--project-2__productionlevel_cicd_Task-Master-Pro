@@ -1,0 +1,89 @@
+trigger:
+- master
+
+pool:
+  name: 'rafiagent'   # Your self-hosted Windows agent pool name
+
+variables:
+  mavenPOMFile: 'pom.xml'
+
+stages:
+
+# ======================
+# 1) Build & Unit Tests
+# ======================
+- stage: Build
+  displayName: 'Build & Unit Tests'
+  jobs:
+  - job: BuildAndTest
+    pool:
+      name: 'rafiagent'
+    steps:
+    - task: Maven@4
+      displayName: 'Unit Tests Run'
+      inputs:
+        mavenPomFile: '$(mavenPOMFile)'
+        goals: test
+        options: '-B -DskipTests=false'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish Unit Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/target/surefire-reports/*.xml'
+        failTaskOnFailedTests: true
+
+    - task: Maven@3
+      displayName: 'Maven Build'
+      inputs:
+        mavenPomFile: '$(mavenPOMFile)'
+        goals: 'clean package'
+
+# ======================
+# 2) Static Analysis (SAST) - SonarCloud
+# ======================
+- stage: CodeAnalysis
+  displayName: 'Static Code Analysis'
+  dependsOn: Build
+  jobs:
+  - job: SonarScan
+    pool:
+      name: 'rafiagent'
+    steps:
+    - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@3
+      displayName: 'Prepare analysis on SonarQube Cloud'
+      inputs:
+        SonarQube: 'sonarcloud15thJuly'
+        organization: 'rafi2'
+        scannerMode: 'cli'
+        cliScannerVersion: '7.0.2.4839'
+
+    - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@3
+      displayName: 'Run Code Analysis'
+      inputs:
+        jdkversion: 'JAVA_HOME'
+
+    - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@3
+      displayName: 'Publish Quality Gate Result'
+
+# ======================
+# 3) Dependency Scan - OWASP
+# ======================
+- stage: SecurityScan
+  displayName: 'Dependency Vulnerability Scan'
+  dependsOn: CodeAnalysis
+  jobs:
+  - job: OWASPScan
+    pool:
+      name: 'rafiagent'
+    steps:
+    - powershell: |
+        Write-Host "Running OWASP Dependency-Check"
+        & "C:\Tools\dependency-check\bin\dependency-check.bat" --project JavaProject --scan "$(Build.SourcesDirectory)" --format HTML --out "$(Build.ArtifactStagingDirectory)\owasp-report"
+      displayName: 'OWASP Dependency-Check'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: dependency-check-report'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)\owasp-report'
+        ArtifactName: 'dependency-check-report'

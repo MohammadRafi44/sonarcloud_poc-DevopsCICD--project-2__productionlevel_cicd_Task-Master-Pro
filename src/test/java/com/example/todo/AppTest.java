@@ -14,3 +14,11 @@ class TodoApplicationTests {
     }
 }
 
+@SpringBootTest
+class AppTest {
+
+    @Test
+    void contextLoads() {
+        assertTrue(true);
+    }
+}
