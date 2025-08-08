@@ -1,5 +1,5 @@
 trigger:
-- none
+- master
 
 pool:
   name: 'rafiagent'  # self-hosted Windows agent
