@@ -2,7 +2,7 @@ trigger:
 - master
 
 pool:
-  name: 'rafiagent'   # Your self-hosted Windows agent pool name
+  name: 'rafiagent'   # self-hosted Windows agent
 
 variables:
   mavenPOMFile: 'pom.xml'
@@ -38,6 +38,22 @@ stages:
       inputs:
         mavenPomFile: '$(mavenPOMFile)'
         goals: 'clean package'
+
+    # -----------------------
+    # Collect & publish JAR(s)
+    # -----------------------
+    - task: CopyFiles@2
+      displayName: 'Stage artifacts'
+      inputs:
+        contents: '**/target/*.jar'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish artifact'
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifact: 'drop'
+        publishLocation: 'pipeline'
 
 # ======================
 # 2) Static Analysis (SAST) - SonarCloud
