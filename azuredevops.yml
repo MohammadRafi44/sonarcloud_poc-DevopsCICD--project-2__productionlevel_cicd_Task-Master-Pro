@@ -144,29 +144,44 @@ stages:
       displayName: 'Copy JAR to QA deploy folder'
 
 # ======================
-# 5) QA Automation (separate repo)
-# ======================
 - stage: QA_Automation
   displayName: 'Run QA Automation from agi_Kabi'
   dependsOn: DeployQA
+  condition: succeeded('DeployQA')
   jobs:
   - job: AutomationTests
     displayName: 'Run QA Automation Tests'
     pool:
       name: 'rafiagent'
     steps:
+    # Primary repo (optional, but keeps behavior consistent)
+    - checkout: self
+
+    # Secondary repo: force its path to s\regtests
     - checkout: regtests
+      path: s\regtests
       displayName: 'Checkout automation tests repo (agi_Kabi)'
+
+    # (optional) sanity: show where things landed
+    - powershell: |
+        Write-Host "Build.SourcesDirectory = $(Build.SourcesDirectory)"
+        Write-Host "Pipeline.Workspace    = $(Pipeline.Workspace)"
+        Get-ChildItem -Path "$(Pipeline.Workspace)\s" -Name
+        if (Test-Path "$(Pipeline.Workspace)\s\regtests\pom.xml") {
+          Write-Host "Found pom.xml in regtests."
+        } else {
+          Write-Error "pom.xml NOT found in $(Pipeline.Workspace)\s\regtests"
+        }
 
     - task: Maven@4
       displayName: 'Run Reg-Auto-Tests'
       inputs:
-        mavenPomFile: '$(RegTestsRepo)\pom.xml'
+        mavenPomFile: '$(Pipeline.Workspace)\s\regtests\pom.xml'
         goals: install
         options: '-Dmaven.repo.local=maven-local-repo install'
 
     - powershell: |
-        $reportPath = "$(RegTestsRepo)\target\surefire-reports"
+        $reportPath = "$(Pipeline.Workspace)\s\regtests\target\surefire-reports"
         if (-not (Test-Path $reportPath)) { throw "Report path not found: $reportPath" }
         Get-ChildItem -Path $reportPath -Filter "TEST-*.xml" | ForEach-Object {
             (Get-Content $_.FullName) `
@@ -179,17 +194,15 @@ stages:
       displayName: 'Publish Test Results **/surefire-reports/TEST-*.xml'
       inputs:
         testResultsFormat: 'JUnit'
-        testResultsFiles: '$(RegTestsRepo)\target\surefire-reports\TEST-*.xml'
+        testResultsFiles: '$(Pipeline.Workspace)\s\regtests\target\surefire-reports\TEST-*.xml'
         failTaskOnFailedTests: true
 
     - powershell: |
-        $reportRoot = "$(RegTestsRepo)\report"
+        $reportRoot = "$(Pipeline.Workspace)\s\regtests\report"
         $latestDir = Get-ChildItem -Directory $reportRoot | Sort-Object Name -Descending | Select-Object -First 1
-        
         if ($latestDir) {
             $srcHtml = Join-Path $latestDir.FullName "TestReport.html"
             $targetDir = "$(Build.ArtifactStagingDirectory)\ExtentReport"
-        
             New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
             Copy-Item -Path $srcHtml -Destination $targetDir -Force
             Write-Host "✅ Copied $srcHtml to $targetDir"
@@ -204,3 +217,4 @@ stages:
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)\ExtentReport'
         ArtifactName: 'ExtentReport'
+
