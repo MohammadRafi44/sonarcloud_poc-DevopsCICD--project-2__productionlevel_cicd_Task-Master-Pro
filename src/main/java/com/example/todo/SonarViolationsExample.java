@@ -140,6 +140,7 @@ public class SonarViolationsExample {
     public void helper18() { int x = 18; }
     public void helper19() { int x = 19; }
     public void helper20() { int x = 20; }
+        public void helper21() { int x = 21; }
 
     // Reliability Issues (Newly Added)
     public void causeCrash() {
