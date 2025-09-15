@@ -1,5 +1,5 @@
 trigger:
-- master
+- none
 
 pool:
   name: 'rafiagent'  # self-hosted Windows agent
@@ -205,3 +205,15 @@ stages:
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)\ExtentReport'
         ArtifactName: 'ExtentReport'
+
+    # Publish results to Zephyr
+    - powershell: |
+        mvn -q org.codehaus.mojo:exec-maven-plugin:3.2.0:java `
+          -Dexec.mainClass=com.agi.zephyr.ZephyrPublisher `
+          -Dexec.classpathScope=test `
+          -Dexec.args="--results test-output/testng-results.xml `
+                       --mapping zephyr-integration/mapping.json `
+                       --token $(ZEPHYR_TOKEN) `
+                       --projectKey AEA `
+                       --cyclePrefix 'Daily Regression - '"
+      displayName: 'Publish results to Zephyr'
