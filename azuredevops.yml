@@ -1,5 +1,5 @@
 trigger:
-- none
+- master
 
 pool:
   name: 'rafiagent'  # self-hosted Windows agent
@@ -54,7 +54,7 @@ stages:
     - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@3
       displayName: 'Prepare SonarCloud Analysis'
       inputs:
-        SonarQube: 'sonarcloud15thJuly'
+        SonarQube: 'scloud'
         organization: 'rafi2'
         scannerMode: 'cli'
         cliScannerVersion: '7.0.2.4839'
