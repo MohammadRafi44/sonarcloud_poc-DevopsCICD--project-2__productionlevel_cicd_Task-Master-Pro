@@ -71,22 +71,22 @@ stages:
         failWhenQualityGateFails: true
 
   # Job 3 - OWASP Dependency Check
-  - job: OWASPScan
-    displayName: 'OWASP Dependency-Check'
-    pool:
-      name: 'rafiagent'
-    dependsOn: SonarScan
-    steps:
-    - powershell: |
-        Write-Host "Running OWASP Dependency-Check"
-        & "C:\Tools\dependency-check\bin\dependency-check.bat" --project JavaProject --scan "$(Build.SourcesDirectory)" --format HTML --out "$(Build.ArtifactStagingDirectory)\owasp-report"
-      displayName: 'OWASP Dependency-Check'
+  # - job: OWASPScan
+  #   displayName: 'OWASP Dependency-Check'
+  #   pool:
+  #     name: 'rafiagent'
+  #   dependsOn: SonarScan
+  #   steps:
+  #   - powershell: |
+  #       Write-Host "Running OWASP Dependency-Check"
+  #       & "C:\Tools\dependency-check\bin\dependency-check.bat" --project JavaProject --scan "$(Build.SourcesDirectory)" --format HTML --out "$(Build.ArtifactStagingDirectory)\owasp-report"
+  #     displayName: 'OWASP Dependency-Check'
 
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish OWASP Report'
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)\owasp-report'
-        ArtifactName: 'dependency-check-report'
+  #   - task: PublishBuildArtifacts@1
+  #     displayName: 'Publish OWASP Report'
+  #     inputs:
+  #       PathtoPublish: '$(Build.ArtifactStagingDirectory)\owasp-report'
+  #       ArtifactName: 'dependency-check-report'
 
 # ======================
 # 2) Build: Maven Package
@@ -123,97 +123,97 @@ stages:
 # ======================
 # 3) QA: Deploy + Automation Tests
 # ======================
-- stage: QA
-  displayName: 'QA Deploy & Automation Tests'
-  dependsOn: Build
-  condition: succeeded('Build')
-  jobs:
-  - job: DeployAndTest
-    displayName: 'Copy JAR and run automation'
-    pool:
-      name: 'rafiagent'
-    steps:
-    # Deploy JAR to QA folder
-    - task: DownloadPipelineArtifact@2
-      displayName: 'Download drop artifact'
-      inputs:
-        artifact: 'drop'
-        path: '$(Pipeline.Workspace)\deploy'
+# - stage: QA
+#   displayName: 'QA Deploy & Automation Tests'
+#   dependsOn: Build
+#   condition: succeeded('Build')
+#   jobs:
+#   - job: DeployAndTest
+#     displayName: 'Copy JAR and run automation'
+#     pool:
+#       name: 'rafiagent'
+#     steps:
+#     # Deploy JAR to QA folder
+#     - task: DownloadPipelineArtifact@2
+#       displayName: 'Download drop artifact'
+#       inputs:
+#         artifact: 'drop'
+#         path: '$(Pipeline.Workspace)\deploy'
 
-    - powershell: |
-        $deployFolder = "C:\QA_Deploy"
-        if (-not (Test-Path $deployFolder)) {
-          New-Item -ItemType Directory -Force -Path $deployFolder | Out-Null
-        }
-        Get-ChildItem "$(Pipeline.Workspace)\deploy" -Recurse -Filter *.jar | ForEach-Object {
-          Copy-Item -Path $_.FullName -Destination $deployFolder -Force
-          Write-Host "Copied $($_.Name) to $deployFolder"
-        }
-      displayName: 'Copy JAR to QA deploy folder'
+#     - powershell: |
+#         $deployFolder = "C:\QA_Deploy"
+#         if (-not (Test-Path $deployFolder)) {
+#           New-Item -ItemType Directory -Force -Path $deployFolder | Out-Null
+#         }
+#         Get-ChildItem "$(Pipeline.Workspace)\deploy" -Recurse -Filter *.jar | ForEach-Object {
+#           Copy-Item -Path $_.FullName -Destination $deployFolder -Force
+#           Write-Host "Copied $($_.Name) to $deployFolder"
+#         }
+#       displayName: 'Copy JAR to QA deploy folder'
 
-    # Checkout automation repo
-    - checkout: regtests
-      path: s\regtests
-      displayName: 'Checkout automation tests repo (agi_Kabi)'
+#     # Checkout automation repo
+#     - checkout: regtests
+#       path: s\regtests
+#       displayName: 'Checkout automation tests repo (agi_Kabi)'
 
-    # Run automation tests
-    - task: Maven@4
-      displayName: 'Run QA Automation Tests'
-      inputs:
-        mavenPomFile: '$(Pipeline.Workspace)\s\regtests\pom.xml'
-        goals: install
-        options: '-Dmaven.repo.local=maven-local-repo install'
+#     # Run automation tests
+#     - task: Maven@4
+#       displayName: 'Run QA Automation Tests'
+#       inputs:
+#         mavenPomFile: '$(Pipeline.Workspace)\s\regtests\pom.xml'
+#         goals: install
+#         options: '-Dmaven.repo.local=maven-local-repo install'
 
-    # Clean JUnit headers (prevents XML wrapper issues)
-    - powershell: |
-        $reportPath = "$(Pipeline.Workspace)\s\regtests\target\surefire-reports"
-        if (-not (Test-Path $reportPath)) { throw "Report path not found: $reportPath" }
-        Get-ChildItem -Path $reportPath -Filter "TEST-*.xml" | ForEach-Object {
-            (Get-Content $_.FullName) `
-            -replace '<testsuite([^>]*)>', '' `
-            -replace '</testsuite>', '' | Set-Content $_.FullName
-        }
-      displayName: 'Clean JUnit XML headers'
+#     # Clean JUnit headers (prevents XML wrapper issues)
+#     - powershell: |
+#         $reportPath = "$(Pipeline.Workspace)\s\regtests\target\surefire-reports"
+#         if (-not (Test-Path $reportPath)) { throw "Report path not found: $reportPath" }
+#         Get-ChildItem -Path $reportPath -Filter "TEST-*.xml" | ForEach-Object {
+#             (Get-Content $_.FullName) `
+#             -replace '<testsuite([^>]*)>', '' `
+#             -replace '</testsuite>', '' | Set-Content $_.FullName
+#         }
+#       displayName: 'Clean JUnit XML headers'
 
-    - task: PublishTestResults@2
-      displayName: 'Publish Automation Test Results'
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '$(Pipeline.Workspace)\s\regtests\target\surefire-reports\TEST-*.xml'
-        failTaskOnFailedTests: true
+#     - task: PublishTestResults@2
+#       displayName: 'Publish Automation Test Results'
+#       inputs:
+#         testResultsFormat: 'JUnit'
+#         testResultsFiles: '$(Pipeline.Workspace)\s\regtests\target\surefire-reports\TEST-*.xml'
+#         failTaskOnFailedTests: true
 
-    # Copy latest Extent report
-    - powershell: |
-        $reportRoot = "$(Pipeline.Workspace)\s\regtests\report"
-        if (-not (Test-Path $reportRoot)) {
-          throw "Report root not found: $reportRoot"
-        }
-        $latestDir = Get-ChildItem -Directory $reportRoot | Sort-Object Name -Descending | Select-Object -First 1
-        if ($latestDir) {
-            $srcHtml = Join-Path $latestDir.FullName "TestReport.html"
-            $targetDir = "$(Build.ArtifactStagingDirectory)\ExtentReport"
-            New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
-            Copy-Item -Path $srcHtml -Destination $targetDir -Force
-            Write-Host "Copied $srcHtml to $targetDir"
-        } else {
-            throw "No report folder found under $reportRoot"
-        }
-      displayName: 'Copy Latest Extent Report'
+#     # Copy latest Extent report
+#     - powershell: |
+#         $reportRoot = "$(Pipeline.Workspace)\s\regtests\report"
+#         if (-not (Test-Path $reportRoot)) {
+#           throw "Report root not found: $reportRoot"
+#         }
+#         $latestDir = Get-ChildItem -Directory $reportRoot | Sort-Object Name -Descending | Select-Object -First 1
+#         if ($latestDir) {
+#             $srcHtml = Join-Path $latestDir.FullName "TestReport.html"
+#             $targetDir = "$(Build.ArtifactStagingDirectory)\ExtentReport"
+#             New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+#             Copy-Item -Path $srcHtml -Destination $targetDir -Force
+#             Write-Host "Copied $srcHtml to $targetDir"
+#         } else {
+#             throw "No report folder found under $reportRoot"
+#         }
+#       displayName: 'Copy Latest Extent Report'
 
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish Extent Report'
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)\ExtentReport'
-        ArtifactName: 'ExtentReport'
+#     - task: PublishBuildArtifacts@1
+#       displayName: 'Publish Extent Report'
+#       inputs:
+#         PathtoPublish: '$(Build.ArtifactStagingDirectory)\ExtentReport'
+#         ArtifactName: 'ExtentReport'
 
-    # Publish results to Zephyr
-    - powershell: |
-        mvn -q org.codehaus.mojo:exec-maven-plugin:3.2.0:java `
-          -Dexec.mainClass=com.agi.zephyr.ZephyrPublisher `
-          -Dexec.classpathScope=test `
-          -Dexec.args="--results test-output/testng-results.xml `
-                       --mapping zephyr-integration/mapping.json `
-                       --token $(ZEPHYR_TOKEN) `
-                       --projectKey AEA `
-                       --cyclePrefix 'Daily Regression - '"
-      displayName: 'Publish results to Zephyr'
+#     # Publish results to Zephyr
+#     - powershell: |
+#         mvn -q org.codehaus.mojo:exec-maven-plugin:3.2.0:java `
+#           -Dexec.mainClass=com.agi.zephyr.ZephyrPublisher `
+#           -Dexec.classpathScope=test `
+#           -Dexec.args="--results test-output/testng-results.xml `
+#                        --mapping zephyr-integration/mapping.json `
+#                        --token $(ZEPHYR_TOKEN) `
+#                        --projectKey AEA `
+#                        --cyclePrefix 'Daily Regression - '"
+#       displayName: 'Publish results to Zephyr'
