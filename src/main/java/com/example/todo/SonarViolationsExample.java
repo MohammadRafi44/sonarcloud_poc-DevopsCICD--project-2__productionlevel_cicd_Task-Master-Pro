@@ -111,9 +111,19 @@ public class SonarViolationsExample {
             System.out.println("Result: " + result);
         }
 
+        for (int i = 0; i < 3; i++) {
+            int a11 = 5, b11 = 10;
+            int result11 = a11 + b11;
+            System.out.println("Result11: " + result11);
+        }
+
         // Unreachable code
         if (true) return;
         System.out.println("Never runs");
+
+        // Unreachable code
+        if (true) return;
+        System.out.println("Never runs2");
 
         // Hardcoded credentials again
         System.out.println("Connecting with: admin/admin123");
