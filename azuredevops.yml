@@ -43,6 +43,13 @@ stages:
         testResultsFormat: 'JUnit'
         testResultsFiles: '**/target/surefire-reports/*.xml'
         failTaskOnFailedTests: true
+    - task: PublishCodeCoverageResults@2
+      displayName: 'Publish JaCoCo to Azure DevOps'
+      inputs:
+        codeCoverageTool: 'JaCoCo'
+        summaryFileLocation: '$(Build.SourcesDirectory)/**/target/site/jacoco/jacoco.xml'
+        reportDirectory:     '$(Build.SourcesDirectory)/**/target/site/jacoco'
+        pathToSources:       '$(Build.SourcesDirectory)'
 
   # Job 2 - SonarCloud Analysis
   - job: SonarScan
