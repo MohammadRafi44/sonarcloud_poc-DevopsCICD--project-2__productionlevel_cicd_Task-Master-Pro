@@ -34,7 +34,7 @@ stages:
       displayName: 'Run Unit Tests'
       inputs:
         mavenPomFile: '$(mavenPOMFile)'
-        goals: test
+        goals: clean verify
         options: '-B -DskipTests=false'
 
     - task: PublishTestResults@2
